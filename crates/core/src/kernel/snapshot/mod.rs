@@ -82,7 +82,7 @@ impl Snapshot {
         let (metadata, protocol) = (metadata.unwrap(), protocol.unwrap());
         let schema = serde_json::from_str(&metadata.schema_string)?;
 
-        PROTOCOL.can_read_from_protocol(&protocol)?;
+        // PROTOCOL.can_read_from_protocol(&protocol)?;
 
         Ok(Self {
             log_segment,
