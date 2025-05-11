@@ -215,8 +215,8 @@ impl DeltaTableState {
 
         let nonpartitioned_columns: Vec<String> = filters
             .iter()
-            .filter(|f| !current_metadata.partition_columns.contains(&f.key))
-            .map(|f| f.key.to_string())
+            .filter(|f| !current_metadata.partition_columns.contains(&f.key().to_string()))
+            .map(|f| f.key().to_string())
             .collect();
 
         if !nonpartitioned_columns.is_empty() {
@@ -225,7 +225,7 @@ impl DeltaTableState {
             });
         }
 
-        let partition_col_data_types: HashMap<&String, &DataType> =
+        let partition_col_data_types: HashMap<&str, &DataType> =
             get_partition_col_data_types(self.schema(), current_metadata)
                 .into_iter()
                 .collect();

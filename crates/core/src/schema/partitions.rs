@@ -1,13 +1,16 @@
 //! Delta Table partition handling logic.
+use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
 use delta_kernel::expressions::Scalar;
+use delta_kernel::schema::StructType;
 use serde::{Serialize, Serializer};
 
 use crate::errors::DeltaTableError;
 use crate::kernel::{scalars::ScalarExt, DataType, PrimitiveType};
+use crate::DeltaResult;
 
 /// A special value used in Hive to represent the null partition in partitioned tables
 pub const NULL_PARTITION_VALUE_DATA_PATH: &str = "__HIVE_DEFAULT_PARTITION__";
@@ -75,9 +78,38 @@ impl PartialOrd for ScalarHelper<'_> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PartitionFilter {
     /// The key of the PartitionFilter
-    pub key: String,
+    pub(crate) key: String,
     /// The value of the PartitionFilter
-    pub value: PartitionValue,
+    pub(crate) value: PartitionValue,
+}
+
+impl PartitionFilter {
+    // pub fn new(
+    //     schema: &StructType,
+    //     partition_name: &str,
+    //     filter: &PartitionValue,
+    // ) -> DeltaResult<Self> {
+    //     let physical_name = schema
+    //         .field(partition_name)
+    //         .ok_or(DeltaTableError::InvalidPartitionFilter {
+    //             partition_filter: format!("name {}, filter:{:?}", partition_name, filter),
+    //         })?
+    //         .physical_name()
+    //         .to_string();
+    //     Ok(Self {
+    //         key: partition_name.to_string(),
+    //         physical_name,
+    //         value: filter.clone(),
+    //     })
+    // }
+
+    pub fn key(&self) -> &str {
+        &self.key
+    }
+
+    pub fn value(&self) -> &PartitionValue {
+        &self.value
+    }
 }
 
 fn compare_typed_value(
@@ -155,9 +187,24 @@ impl PartitionFilter {
     pub fn match_partitions(
         &self,
         partitions: &[DeltaTablePartition],
-        partition_col_data_types: &HashMap<&String, &DataType>,
+        partition_col_data_types: &HashMap<&str, &DataType>,
+        schema: &StructType,
     ) -> bool {
-        let data_type = partition_col_data_types.get(&self.key).unwrap().to_owned();
+        println!(
+            "^^^\n{:?}\n{:?}\n{:?}\n^^^^",
+            partitions, partition_col_data_types, self.key
+        );
+        let key_physical_name = schema
+            .field(partition_name)
+            .ok_or(DeltaTableError::InvalidPartitionFilter {
+                partition_filter: format!("name {}, filter:{:?}", partition_name, filter),
+            })
+            .unwrap()
+            .physical_name();
+        let data_type = partition_col_data_types
+            .get(key_physical_name)
+            .unwrap()
+            .to_owned();
         partitions
             .iter()
             .any(|partition| self.match_partition(partition, data_type))
@@ -460,9 +507,9 @@ mod tests {
         ];
 
         let string_type = DataType::Primitive(PrimitiveType::String);
-        let partition_data_types: HashMap<&String, &DataType> = vec![
-            (&partitions[0].key, &string_type),
-            (&partitions[1].key, &string_type),
+        let partition_data_types: HashMap<&str, &DataType> = vec![
+            (partitions[0].key.as_str(), &string_type),
+            (partitions[1].key.as_str(), &string_type),
         ]
         .into_iter()
         .collect();

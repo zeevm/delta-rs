@@ -428,14 +428,13 @@ impl<'a> FileStatsAccessor<'a> {
                 .partition_columns
                 .iter()
                 .map(|c| {
-                    Ok((
-                        c.as_str(),
+                    let field =
                         schema
                             .field(c.as_str())
                             .ok_or(DeltaTableError::PartitionError {
                                 partition: c.clone(),
-                            })?,
-                    ))
+                            })?;
+                    Ok((field.physical_name(), field))
                 })
                 .collect::<DeltaResult<IndexMap<_, _>>>()?,
         );

@@ -212,7 +212,7 @@ impl DataCheck for GeneratedColumn {
 pub(crate) fn get_partition_col_data_types<'a>(
     schema: &'a StructType,
     metadata: &'a Metadata,
-) -> Vec<(&'a String, &'a DataType)> {
+) -> Vec<(&'a str, &'a DataType)> {
     // JSON add actions contain a `partitionValues` field which is a map<string, string>.
     // When loading `partitionValues_parsed` we have to convert the stringified partition values back to the correct data type.
     schema
@@ -223,7 +223,7 @@ pub(crate) fn get_partition_col_data_types<'a>(
                 .iter()
                 .any(|s| s.as_str() == f.name())
             {
-                Some((f.name(), f.data_type()))
+                Some((f.physical_name(), f.data_type()))
             } else {
                 None
             }

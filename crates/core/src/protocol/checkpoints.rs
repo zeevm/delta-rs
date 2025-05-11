@@ -412,7 +412,7 @@ fn parquet_bytes_from_state(
 
 fn checkpoint_add_from_state(
     add: &AddAction,
-    partition_col_data_types: &[(&String, &DataType)],
+    partition_col_data_types: &[(&str, &DataType)],
     stats_conversions: &[(SchemaPath, DataType)],
     write_stats_as_json: bool,
     write_stats_as_struct: bool,
