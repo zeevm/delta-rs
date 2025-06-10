@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use datafusion_expr::{LogicalPlan, UserDefinedLogicalNodeCore};
+use datafusion::logical_expr::{LogicalPlan, UserDefinedLogicalNodeCore};
 
 // Metric Observer is used to update DataFusion metrics from a record batch.
 // See MetricObserverExec for the physical implementation
@@ -22,15 +22,15 @@ impl UserDefinedLogicalNodeCore for MetricObserver {
         "MetricObserver"
     }
 
-    fn inputs(&self) -> Vec<&datafusion_expr::LogicalPlan> {
+    fn inputs(&self) -> Vec<&datafusion::logical_expr::LogicalPlan> {
         vec![&self.input]
     }
 
-    fn schema(&self) -> &datafusion_common::DFSchemaRef {
+    fn schema(&self) -> &datafusion::common::DFSchemaRef {
         self.input.schema()
     }
 
-    fn expressions(&self) -> Vec<datafusion_expr::Expr> {
+    fn expressions(&self) -> Vec<datafusion::logical_expr::Expr> {
         vec![]
     }
 
@@ -50,20 +50,11 @@ impl UserDefinedLogicalNodeCore for MetricObserver {
         write!(f, "MetricObserver id={}", self.id)
     }
 
-    fn from_template(
-        &self,
-        exprs: &[datafusion_expr::Expr],
-        inputs: &[datafusion_expr::LogicalPlan],
-    ) -> Self {
-        self.with_exprs_and_inputs(exprs.to_vec(), inputs.to_vec())
-            .unwrap()
-    }
-
     fn with_exprs_and_inputs(
         &self,
-        _exprs: Vec<datafusion_expr::Expr>,
-        inputs: Vec<datafusion_expr::LogicalPlan>,
-    ) -> datafusion_common::Result<Self> {
+        _exprs: Vec<datafusion::logical_expr::Expr>,
+        inputs: Vec<datafusion::logical_expr::LogicalPlan>,
+    ) -> datafusion::common::Result<Self> {
         Ok(MetricObserver {
             id: self.id.clone(),
             input: inputs[0].clone(),

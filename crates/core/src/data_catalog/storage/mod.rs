@@ -7,14 +7,14 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use datafusion::catalog::SchemaProvider;
+use datafusion::common::DataFusionError;
 use datafusion::datasource::TableProvider;
-use datafusion_common::DataFusionError;
 use futures::TryStreamExt;
 use object_store::ObjectStore;
 
 use crate::errors::DeltaResult;
+use crate::logstore::{store_for, StorageConfig};
 use crate::open_table_with_storage_options;
-use crate::storage::*;
 use crate::table::builder::ensure_table_uri;
 
 const DELTA_LOG_FOLDER: &str = "_delta_log";
@@ -38,29 +38,28 @@ pub struct ListingSchemaProvider {
     /// A map of table names to a fully quilfied storage location
     tables: DashMap<String, String>,
     /// Options used to create underlying object stores
-    storage_options: StorageOptions,
+    storage_options: StorageConfig,
 }
 
 impl ListingSchemaProvider {
     /// Create a new [`ListingSchemaProvider`]
     pub fn try_new(
         root_uri: impl AsRef<str>,
-        storage_options: Option<HashMap<String, String>>,
+        options: Option<HashMap<String, String>>,
     ) -> DeltaResult<Self> {
         let uri = ensure_table_uri(root_uri)?;
-        let storage_options: StorageOptions = storage_options.unwrap_or_default().into();
-        // We already parsed the url, so unwrapping is safe.
-        let store = store_for(&uri, &storage_options)?;
+        let options = options.unwrap_or_default();
+        let store = store_for(&uri, &options)?;
         Ok(Self {
             authority: uri.to_string(),
             store,
             tables: DashMap::new(),
-            storage_options,
+            storage_options: StorageConfig::parse_options(options)?,
         })
     }
 
     /// Reload table information from ObjectStore
-    pub async fn refresh(&self) -> datafusion_common::Result<()> {
+    pub async fn refresh(&self) -> datafusion::common::Result<()> {
         let entries: Vec<_> = self.store.list(None).try_collect().await?;
         let mut tables = HashSet::new();
         for file in entries.iter() {
@@ -111,12 +110,15 @@ impl SchemaProvider for ListingSchemaProvider {
         self.tables.iter().map(|t| t.key().clone()).collect()
     }
 
-    async fn table(&self, name: &str) -> datafusion_common::Result<Option<Arc<dyn TableProvider>>> {
+    async fn table(
+        &self,
+        name: &str,
+    ) -> datafusion::common::Result<Option<Arc<dyn TableProvider>>> {
         let Some(location) = self.tables.get(name).map(|t| t.clone()) else {
             return Ok(None);
         };
         let provider =
-            open_table_with_storage_options(location, self.storage_options.0.clone()).await?;
+            open_table_with_storage_options(location, self.storage_options.raw.clone()).await?;
         Ok(Some(Arc::new(provider) as Arc<dyn TableProvider>))
     }
 
@@ -124,7 +126,7 @@ impl SchemaProvider for ListingSchemaProvider {
         &self,
         _name: String,
         _table: Arc<dyn TableProvider>,
-    ) -> datafusion_common::Result<Option<Arc<dyn TableProvider>>> {
+    ) -> datafusion::common::Result<Option<Arc<dyn TableProvider>>> {
         Err(DataFusionError::Execution(
             "schema provider does not support registering tables".to_owned(),
         ))
@@ -133,7 +135,7 @@ impl SchemaProvider for ListingSchemaProvider {
     fn deregister_table(
         &self,
         _name: &str,
-    ) -> datafusion_common::Result<Option<Arc<dyn TableProvider>>> {
+    ) -> datafusion::common::Result<Option<Arc<dyn TableProvider>>> {
         Err(DataFusionError::Execution(
             "schema provider does not support deregistering tables".to_owned(),
         ))

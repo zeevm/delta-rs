@@ -42,7 +42,7 @@ impl SchemaAdapter for DeltaSchemaAdapter {
     fn map_schema(
         &self,
         file_schema: &Schema,
-    ) -> datafusion_common::Result<(Arc<dyn SchemaMapper>, Vec<usize>)> {
+    ) -> datafusion::common::Result<(Arc<dyn SchemaMapper>, Vec<usize>)> {
         let mut projection = Vec::with_capacity(file_schema.fields().len());
 
         for (file_idx, file_field) in file_schema.fields.iter().enumerate() {
@@ -59,7 +59,6 @@ impl SchemaAdapter for DeltaSchemaAdapter {
         Ok((
             Arc::new(SchemaMapping {
                 projected_schema: self.projected_table_schema.clone(),
-                table_schema: self.table_schema.clone(),
             }),
             projection,
         ))
@@ -69,29 +68,11 @@ impl SchemaAdapter for DeltaSchemaAdapter {
 #[derive(Debug)]
 pub(crate) struct SchemaMapping {
     projected_schema: SchemaRef,
-    table_schema: SchemaRef,
 }
 
 impl SchemaMapper for SchemaMapping {
-    fn map_batch(&self, batch: RecordBatch) -> datafusion_common::Result<RecordBatch> {
+    fn map_batch(&self, batch: RecordBatch) -> datafusion::common::Result<RecordBatch> {
         let record_batch = cast_record_batch(&batch, self.projected_schema.clone(), false, true)?;
-        Ok(record_batch)
-    }
-
-    fn map_partial_batch(&self, batch: RecordBatch) -> datafusion_common::Result<RecordBatch> {
-        let partial_table_schema = Arc::new(Schema::new(
-            batch
-                .schema()
-                .fields()
-                .iter()
-                .filter_map(|batch_field| {
-                    self.table_schema.field_with_name(batch_field.name()).ok()
-                })
-                .cloned()
-                .collect::<Vec<_>>(),
-        ));
-
-        let record_batch = cast_record_batch(&batch, partial_table_schema, false, true)?;
         Ok(record_batch)
     }
 }
