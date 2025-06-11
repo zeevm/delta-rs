@@ -931,7 +931,6 @@ mod tests {
         }
 
         #[tokio::test]
-        #[ignore = "column mapping not yet supported."]
         async fn test_with_column_mapping() {
             // test table with column mapping and partitions
             let path = "../test/tests/data/table_with_column_mapping";

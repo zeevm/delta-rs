@@ -1,4 +1,4 @@
-use deltalake_core::{DeltaResult, DeltaTableBuilder};
+use deltalake_core::{DeltaResult, DeltaTableBuilder, PartitionFilter};
 use pretty_assertions::assert_eq;
 use std::time::SystemTime;
 
@@ -181,11 +181,19 @@ async fn read_delta_table_with_null_stats_in_notnull_struct() {
 }
 
 #[tokio::test]
-#[ignore = "not implemented"]
 async fn read_delta_table_with_renamed_partitioning_column() {
-    let table = deltalake_core::open_table("../test/tests/data/table_with_partitioning_mapping")
+    let table = deltalake_core::open_table("../test/tests/data/partitioned_mapping")
         .await
         .unwrap();
     assert_eq!(table.version(), Some(4));
     assert!(table.get_schema().is_ok());
+
+    let filters = vec![PartitionFilter {
+        key: "newid".to_string(),
+        value: PartitionValue::Equal("1".to_string()),
+    }];
+    let actions = table
+        .get_active_add_actions_by_partitions(&filters)
+        .unwrap();
+    actions.for_each(|a| println!("**\n{}\n**", a.is_ok()));
 }
