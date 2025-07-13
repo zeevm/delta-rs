@@ -231,7 +231,7 @@ pub static INSTANCE: LazyLock<ProtocolChecker> = LazyLock::new(|| {
         writer_features.insert(WriterFeature::CheckConstraints);
         writer_features.insert(WriterFeature::GeneratedColumns);
     }
-    // writer_features.insert(WriterFeature::ColumnMapping);
+    writer_features.insert(WriterFeature::ColumnMapping);
     // writer_features.insert(WriterFeature::IdentityColumns);
 
     ProtocolChecker::new(reader_features, writer_features)
